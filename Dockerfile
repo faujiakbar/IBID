@@ -17,14 +17,25 @@ sed -i s/^post_max_size.*/post_max_size\ =\ 32M/g /etc/php.ini && \
 echo "php_admin_value[upload_max_filesize] = 32M" >> /etc/php-fpm.d/www.conf && \
 echo "php_admin_value[post_max_size] = 32M" >> /etc/php-fpm.d/www.conf && \
 echo "php_flag[display_errors] = off" >> /etc/php-fpm.d/www.conf && \
-echo "php_flag[expose_php] = Off" >> /etc/php-fpm.d/www.conf
+echo "php_flag[expose_php] = Off" >> /etc/php-fpm.d/www.conf && \
+sed -i 's;^user\ =\ .*;user\ =\ nginx;' /etc/php-fpm.d/www.conf && \
+sed -i 's;^group\ =\ .*;group\ =\ nginx;' /etc/php-fpm.d/www.conf && \
+sed -i 's;^listen\ =\ .*;listen\ =\ \/run\/php-fpm\/php-fpm.sock;' /etc/php-fpm.d/www.conf && \
+sed -i 's;^\;listen.owner\ =\ .*;listen.owner\ =\ nginx;' /etc/php-fpm.d/www.conf && \
+sed -i 's;^\;listen.group\ =\ .*;listen.group\ =\ nginx;' /etc/php-fpm.d/www.conf
 
 RUN yum clean all
 RUN rm -rf /var/cache/yum /tmp/* /var/tmp/*
 
-EXPOSE 80
+COPY config/nginx.conf /etc/nginx/nginx.conf
+RUN chmod 644 /etc/nginx/nginx.conf
+
+RUN rm -rf /usr/share/nginx/html/*
+COPY html /usr/share/nginx/html
+RUN chown -R apache:apache /usr/share/nginx/html/*
+
+CMD usermod -a -G apache root
+CMD /usr/sbin/php-fpm && /usr/sbin/nginx -g 'daemon off;' && /usr/sbin/nginx -c /etc/nginx/nginx.conf
+
+EXPOSE 8000
 EXPOSE 443
-
-CMD nginx -g 'daemon off;'
-
-CMD /usr/sbin/php-fpm && /usr/sbin/nginx -c /etc/nginx/nginx.conf
